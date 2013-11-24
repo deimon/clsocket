@@ -405,11 +405,12 @@ int32 CSimpleSocket::Send(const uint8 *pBuf, size_t bytesToSend)
                 // Check error condition and attempt to resend if call
                 // was interrupted by a signal.
                 //---------------------------------------------------------
-                do
+                while(m_nBytesSent < bytesToSend)
                 {
-                    m_nBytesSent = SEND(m_socket, pBuf, bytesToSend, 0);
-                    TranslateSocketError();
-                } while (GetSocketError() == CSimpleSocket::SocketInterrupted);
+                  int sentByte = SEND(m_socket, pBuf + m_nBytesSent, bytesToSend - m_nBytesSent, 0);
+                  if(sentByte < 0) break;
+                  m_nBytesSent += sentByte;
+                } 
 
                 m_timer.SetEndTime();
             }
@@ -760,12 +761,13 @@ int32 CSimpleSocket::Receive(int32 nMaxBytes)
         //----------------------------------------------------------------------
     case CSimpleSocket::SocketTypeTcp:
     {
-        do
+        while(m_nBytesReceived < nMaxBytes)
         {
-            m_nBytesReceived = RECV(m_socket, (m_pBuffer + m_nBytesReceived),
-                                    nMaxBytes, m_nFlags);
-            TranslateSocketError();
-        } while ((GetSocketError() == CSimpleSocket::SocketInterrupted));
+          int recvByte = RECV(m_socket, (m_pBuffer + m_nBytesReceived), 
+            nMaxBytes - m_nBytesReceived, m_nFlags);
+          if(recvByte <= 0) break;
+          m_nBytesReceived += recvByte;
+        } 
 
         break;
     }
